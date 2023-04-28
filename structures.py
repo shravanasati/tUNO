@@ -44,7 +44,7 @@ class Card:
     value: CardValue
 
     def __str__(self) -> str:
-        return f"{self.color.value}{self.value}"
+        return f"{self.color.value}{self.value.value}"
 
     def is_action_card(self):
         return self.value in (
@@ -54,3 +54,9 @@ class Card:
             CardValue.SKIP,
             CardValue.REVERSE,
         )
+
+
+@dataclass(frozen=True, order=True)
+class Player:
+    name: str
+    cards: list[Card]
