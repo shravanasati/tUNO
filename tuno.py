@@ -19,6 +19,8 @@ class UNOGame:
     """
 
     def __init__(self, *players: str) -> None:
+        if len(players) not in range(2, 11):
+            raise GameplayError("too less or too many players")
         if len(players) != len(set(players)):
             raise GameplayError("duplicate players")
 
