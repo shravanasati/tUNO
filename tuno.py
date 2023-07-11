@@ -209,7 +209,7 @@ class UNOGame:
         running = True
         while running:
             self.display_piles()
-            current_player = self.player_cycle.next()
+            current_player: Player = self.player_cycle.next()
             if current_player.name == "computer":
                 self.computer_move(current_player)
             else:
@@ -232,6 +232,12 @@ class UNOGame:
                     print("Can't play this card")
 
             self.apply_actions()
+            if len(current_player.cards) == 1:
+                print(f"{current_player.name}: UNO")
+            elif len(current_player.cards) == 0:
+                print(f"{current_player.name}: UNO-finish")
+                print(current_player.name, "wins the game!")
+                break
 
 
 if __name__ == "__main__":
