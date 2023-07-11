@@ -68,7 +68,7 @@ class Card:
         )
 
 
-@dataclass(frozen=True, order=True)
+@dataclass(order=True)
 class Player:
     name: str
     cards: list[Card]

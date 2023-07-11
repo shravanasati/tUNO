@@ -59,13 +59,14 @@ class UNOGame:
 
         return deck
 
-    def draw_card(self) -> Card:
+    def draw_card(self, player: Player) -> Card:
         """
         Draws a card from the draw pile.
         """
         try:
             card = self.draw_pile[0]
             self.draw_pile.remove(card)
+            player.cards.append(card)
             return card
         except IndexError:
             # refill the draw pile with cards on discard pile
@@ -119,18 +120,18 @@ class UNOGame:
 
         return card.is_action_card()
 
-    def computer_move(self):
+    def computer_move(self, comp_player: Player):
         """
         Selects a move to play and plays it.
         """
         last_card = self.get_last_card()
         # if the first card is being played
         if not last_card:
-            return self.play_card(random.choice(self.players["computer"]))
+            return self.play_card("computer", random.choice(self.players["computer"]))
 
         # if the last card is either wild card, play randomly
         if last_card.value in (CardValue.WILD, CardValue.WILD_DRAW_FOUR):
-            return self.play_card(random.choice(self.players["computer"]))
+            return self.play_card("computer", random.choice(self.players["computer"]))
 
         # get card by color or value
         deck = self.players["computer"]
@@ -146,7 +147,7 @@ class UNOGame:
                 return action_needed
 
         # last resort, draw a card from draw pile
-        drawn_card = self.draw_card()
+        drawn_card = self.draw_card(comp_player)
         if self.is_card_playable(drawn_card):
             action_needed = self.play_card("computer", drawn_card)
             return action_needed
@@ -164,9 +165,9 @@ class UNOGame:
         next_player: Player = self.player_cycle.next(False)
         match last_card.value:
             case CardValue.DRAW_TWO:
-                next_player.cards.extend([self.draw_card() for _ in range(2)])
+                [self.draw_card(next_player) for _ in range(2)]
             case CardValue.WILD_DRAW_FOUR:
-                next_player.cards.extend([self.draw_card() for _ in range(4)])
+                [self.draw_card(next_player) for _ in range(4)]
             case CardValue.SKIP:
                 # to skip the players, run next once
                 self.player_cycle.next()
@@ -207,15 +208,20 @@ class UNOGame:
         self.player_cycle = cycle([Player(k, v) for k, v in self.players.items()])
         running = True
         while running:
-            # todo option to draw card in input
             self.display_piles()
             current_player = self.player_cycle.next()
             if current_player.name == "computer":
-                self.computer_move()
+                self.computer_move(current_player)
             else:
                 while True:
                     available_cards = "/".join((str(i) for i in current_player.cards))
+                    available_cards += "/draw/pass"
                     card_to_play = input(f"Select a card ({available_cards}):")
+                    if card_to_play == "pass":
+                        break
+                    elif card_to_play == "draw":
+                        self.draw_card(current_player)
+                        continue
                     if card_to_play not in available_cards:
                         print("Can't play this card")
                         continue
