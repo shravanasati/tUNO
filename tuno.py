@@ -1,4 +1,4 @@
-from itertools import cycle
+from cycle import cycle
 import random
 from structures import Card, CardValue, Color, Player
 from pprint import pprint
@@ -29,15 +29,47 @@ class UNOGame:
         self.draw_pile = deck[len(players) * 7 :]
         self.discard_pile = []
 
-        self.player_cycle = cycle((Player(k, v) for k, v in self.players.items()))
+    @staticmethod
+    def build_deck() -> list[Card]:
+        """
+        Builds a UNO deck of 108 cards.
+        """
+        # add 4 wild cards
+        deck: list[Card] = []
+        deck += [Card(Color.COLORLESS, CardValue.WILD)] * 4
+        deck += [Card(Color.COLORLESS, CardValue.WILD_DRAW_FOUR)] * 4
+
+        for color in Color:
+            # colorless ones aleady added
+            if color == Color.COLORLESS:
+                continue
+
+            for card in CardValue:
+                # wild cards already added
+                if card in (CardValue.WILD, CardValue.WILD_DRAW_FOUR):
+                    continue
+
+                deck.append(Card(color, card))
+                # except 0, all colors have 2 cards each of same value
+                if card != CardValue.ZERO:
+                    deck.append(Card(color, card))
+
+        return deck
 
     def draw_card(self) -> Card:
         """
         Draws a card from the draw pile.
         """
-        card = self.draw_pile[0]
-        self.draw_pile.remove(card)
-        return card
+        try:
+            card = self.draw_pile[0]
+            self.draw_pile.remove(card)
+            return card
+        except IndexError:
+            # refill the draw pile with cards on discard pile
+            new_cards = self.discard_pile[:-1]
+            random.shuffle(new_cards)
+            self.discard_pile = self.discard_pile[:-1]
+            self.draw_pile = new_cards
 
     def get_last_card(self) -> Card | None:
         """
@@ -46,7 +78,7 @@ class UNOGame:
         if len(self.discard_pile) == 0:
             return None
         return self.discard_pile[-1]
-    
+
     def is_card_playable(self, card: Card) -> bool:
         """
         Checks whether the given card is playable in the context of the last played card.
@@ -60,7 +92,7 @@ class UNOGame:
             card.color == last_card.color,
             card.value == last_card.value,
             card.color == Color.COLORLESS,  # wild cards
-            last_card.color == Color.COLORLESS
+            last_card.color == Color.COLORLESS,
         )
 
         return any(conditions)
@@ -91,13 +123,11 @@ class UNOGame:
         last_card = self.get_last_card()
         # if the first card is being played
         if not last_card:
-            self.play_card(random.choice(self.players["computer"]))
-            return
+            return self.play_card(random.choice(self.players["computer"]))
 
         # if the last card is either wild card, play randomly
         if last_card.value in (CardValue.WILD, CardValue.WILD_DRAW_FOUR):
-            self.play_card(random.choice(self.players["computer"]))
-            return
+            return self.play_card(random.choice(self.players["computer"]))
 
         # get card by color or value
         deck = self.players["computer"]
@@ -120,33 +150,54 @@ class UNOGame:
 
         return False
 
-    @staticmethod
-    def build_deck() -> list[Card]:
+    def apply_actions(self):
         """
-        Builds a UNO deck of 108 cards.
+        Takes the last card and applies relevant actions, if any.
         """
-        # add 4 wild cards
-        deck: list[Card] = []
-        deck += [Card(Color.COLORLESS, CardValue.WILD)] * 4
-        deck += [Card(Color.COLORLESS, CardValue.WILD_DRAW_FOUR)] * 4
+        last_card = self.get_last_card()
+        if not last_card.is_action_card():
+            return
 
-        for color in Color:
-            # colorless ones aleady added
-            if color == Color.COLORLESS:
-                continue
+        next_player: Player = self.player_cycle.next(False)
+        match last_card.value:
+            case CardValue.DRAW_TWO:
+                next_player.cards.extend([self.draw_card() for _ in range(2)])
+            case CardValue.WILD_DRAW_FOUR:
+                next_player.cards.extend([self.draw_card() for _ in range(4)])
+            case CardValue.SKIP:
+                # to skip the players, run next once
+                self.player_cycle.next()
+            case CardValue.REVERSE:
+                # create a new player cycle with reversed order
+                further_players = [
+                    self.player_cycle.next() for _ in range(self.player_cycle.length)
+                ]
+                further_players = further_players[::-1]
+                self.player_cycle = cycle(further_players)
+            case _:
+                raise GameplayError("unable to match an action card")
 
-            for card in CardValue:
-                # wild cards already added
-                if card in (CardValue.WILD, CardValue.WILD_DRAW_FOUR):
-                    continue
+    def play(self):
+        """
+        Main game loop.
+        """
+        self.player_cycle = cycle([Player(k, v) for k, v in self.players.items()])
+        running = True
+        while running:
+            current_player = self.player_cycle.next()
+            if current_player == "computer":
+                self.computer_move()
+            else:
+                while True:
+                    available_cards = "/".join((str(i) for i in current_player.cards))
+                    card_to_play = input(f"Select a card ({available_cards}):")
+                    if self.is_card_playable(Card.from_string(card_to_play)):
+                        self.play_card(current_player.name, card_to_play)
+                        break
 
-                deck.append(Card(color, card))
-                # except 0, all colors have 2 cards each of same value
-                if card != CardValue.ZERO:
-                    deck.append(Card(color, card))
-
-        return deck
+            self.apply_actions()
 
 
 if __name__ == "__main__":
-    pprint(tuple(str(i) for i in UNOGame().deck))
+    game = UNOGame("player", "computer")
+    game.play()

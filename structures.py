@@ -43,13 +43,25 @@ class Card:
     color: Color
     value: CardValue
 
+    @classmethod
+    def from_string(cls, string: str):
+        if len(string) < 2:
+            raise ValueError(f"invalid {string=} to construct a card")
+        color = string[0]
+        value = CardValue(string[1:])
+        if color not in ("R", "G", "B", "Y"):
+            color = Color.COLORLESS
+            value = CardValue(string)
+        else:
+            color = Color(color)
+        return cls(color, value)
+
     def __str__(self) -> str:
         return f"{self.color.value}{self.value.value}"
 
     def is_action_card(self):
         return self.value in (
             CardValue.WILD_DRAW_FOUR,
-            CardValue.WILD,
             CardValue.DRAW_TWO,
             CardValue.SKIP,
             CardValue.REVERSE,
