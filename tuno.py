@@ -213,6 +213,7 @@ class UNOGame:
             if current_player.name == "computer":
                 self.computer_move(current_player)
             else:
+                draw_count = 0
                 while True:
                     available_cards = "/".join((str(i) for i in current_player.cards))
                     available_cards += "/draw/pass"
@@ -220,6 +221,10 @@ class UNOGame:
                     if card_to_play == "pass":
                         break
                     elif card_to_play == "draw":
+                        if draw_count > 0:
+                            print("Cannot draw again in the same chance. Either pass or play a valid card.")
+                            continue
+                        draw_count += 1
                         self.draw_card(current_player)
                         continue
                     if card_to_play not in available_cards:
