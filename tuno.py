@@ -1,7 +1,10 @@
 from cycle import cycle
 import random
 from structures import Card, CardValue, Color, Player
-from pprint import pprint
+
+from rich.align import Align
+from rich.panel import Panel
+from rich import print
 
 
 class GameplayError(Exception):
@@ -177,6 +180,26 @@ class UNOGame:
             case _:
                 raise GameplayError("unable to match an action card")
 
+    def display_piles(self):
+        last_card = self.get_last_card()
+        if not last_card:
+            last_card = Card(Color.COLORLESS, "no card yet")
+
+        color_mappings = {
+            Color.RED: "red",
+            Color.GREEN: "green",
+            Color.BLUE: "blue",
+            Color.YELLOW: "yellow",
+            Color.COLORLESS: "grey"
+        }
+        color = color_mappings[last_card.color]
+        value = last_card.value
+        if value != "no card yet":
+            value = value.value
+        formatted_text = f"[bold {color}]{value}[/]"
+        p = Panel(formatted_text, title="Discard Pile")
+        print(Align(p))
+
     def play(self):
         """
         Main game loop.
@@ -184,16 +207,23 @@ class UNOGame:
         self.player_cycle = cycle([Player(k, v) for k, v in self.players.items()])
         running = True
         while running:
+            # todo option to draw card in input
+            self.display_piles()
             current_player = self.player_cycle.next()
-            if current_player == "computer":
+            if current_player.name == "computer":
                 self.computer_move()
             else:
                 while True:
                     available_cards = "/".join((str(i) for i in current_player.cards))
                     card_to_play = input(f"Select a card ({available_cards}):")
-                    if self.is_card_playable(Card.from_string(card_to_play)):
+                    if card_to_play not in available_cards:
+                        print("Can't play this card")
+                        continue
+                    card_to_play = Card.from_string(card_to_play)
+                    if self.is_card_playable(card_to_play):
                         self.play_card(current_player.name, card_to_play)
                         break
+                    print("Can't play this card")
 
             self.apply_actions()
 

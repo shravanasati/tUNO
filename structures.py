@@ -48,12 +48,12 @@ class Card:
         if len(string) < 2:
             raise ValueError(f"invalid {string=} to construct a card")
         color = string[0]
-        value = CardValue(string[1:])
-        if color not in ("R", "G", "B", "Y"):
+        if color in ("R", "G", "B", "Y"):
+            color = Color(color)
+            value = CardValue(string[1:])
+        else:
             color = Color.COLORLESS
             value = CardValue(string)
-        else:
-            color = Color(color)
         return cls(color, value)
 
     def __str__(self) -> str:
