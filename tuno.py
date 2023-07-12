@@ -1,10 +1,32 @@
+from datetime import date
+from pathlib import Path
 from cycle import cycle
 import random
+import logging
 from structures import Card, CardValue, Color, Player
 
 from rich.align import Align
 from rich.panel import Panel
 from rich import print
+
+
+def get_log_file_location():
+    tuno_dir = Path.home() / ".tuno"
+    if not tuno_dir.exists():
+        tuno_dir.mkdir()
+    logs = tuno_dir / "logs"
+    if not logs.exists():
+        logs.mkdir()
+    today = str(date.today()) + ".log"
+    filepath = str(logs / today)
+    return filepath
+
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+logger.addHandler(logging.FileHandler(get_log_file_location(), encoding="utf-8"))
+stdout_handler = logger.handlers[0]
+logger.removeHandler(stdout_handler)
 
 
 class GameplayError(Exception):
@@ -127,30 +149,36 @@ class UNOGame:
         Selects a move to play and plays it.
         """
         last_card = self.get_last_card()
+        deck = self.players["computer"]
         # if the first card is being played
         if not last_card:
-            return self.play_card("computer", random.choice(self.players["computer"]))
+            logger.debug("playing a random card because first")
+            return self.play_card("computer", random.choice(deck))
 
         # if the last card is either wild card, play randomly
         if last_card.value in (CardValue.WILD, CardValue.WILD_DRAW_FOUR):
-            return self.play_card("computer", random.choice(self.players["computer"]))
+            logging.debug("playing a random card because last card is wild")
+            return self.play_card("computer", random.choice(deck))
 
         # get card by color or value
-        deck = self.players["computer"]
         for card in deck:
             if card.color == last_card.color or card.value == last_card.value:
+                logger.debug(f"playing {str(card)=} as per last card")
                 action_needed = self.play_card("computer", card)
                 return action_needed
 
         # if no card by color or value, use a wild card if present
         for card in deck:
             if card.color == Color.COLORLESS:
+                logger.debug("playing a wild card cuz no options")
                 action_needed = self.play_card("computer", card)
                 return action_needed
 
         # last resort, draw a card from draw pile
         drawn_card = self.draw_card(comp_player)
+        logger.debug("drawing a card")
         if self.is_card_playable(drawn_card):
+            logger.debug(f"playing the {str(drawn_card)=}")
             action_needed = self.play_card("computer", drawn_card)
             return action_needed
 
@@ -193,7 +221,7 @@ class UNOGame:
             Color.GREEN: "green",
             Color.BLUE: "blue",
             Color.YELLOW: "yellow",
-            Color.COLORLESS: "grey"
+            Color.COLORLESS: "grey",
         }
         color = color_mappings[last_card.color]
         value = last_card.value
@@ -214,22 +242,31 @@ class UNOGame:
             current_player: Player = self.player_cycle.next()
             if current_player.name == "computer":
                 self.computer_move(current_player)
+                logger.debug(
+                    f"computer deck: {tuple(str(i) for i in current_player.cards)}"
+                )
             else:
                 draw_count = 0
                 while True:
                     available_cards = "/".join((str(i) for i in current_player.cards))
-                    available_cards += "/draw/pass"
-                    card_to_play = input(f"Select a card ({available_cards}):")
+                    available_cards += "/draw" if draw_count < 1 else "/pass"
+                    card_to_play = input(f"Select a card ({available_cards}): ").strip()
                     if card_to_play == "pass":
-                        break
+                        if draw_count > 0:
+                            break
+                        else:
+                            print("cant pass without drawing atleast once")
+                            continue
                     elif card_to_play == "draw":
                         if draw_count > 0:
-                            print("Cannot draw again in the same chance. Either pass or play a valid card.")
+                            print(
+                                "Cannot draw again in the same chance. Either pass or play a valid card."
+                            )
                             continue
                         draw_count += 1
                         self.draw_card(current_player)
                         continue
-                    if card_to_play not in available_cards:
+                    if card_to_play not in available_cards.split("/"):
                         print("Can't play this card")
                         continue
                     card_to_play = Card.from_string(card_to_play)
