@@ -8,6 +8,7 @@ from rich.align import Align
 from rich.layout import Layout
 from rich.text import Text
 from rich.panel import Panel
+from rich.prompt import Prompt
 
 from cycle import cycle
 from structures import Card, CardValue, Color, Player
@@ -63,7 +64,7 @@ class UNOGame:
             Color.GREEN: "green",
             Color.BLUE: "blue",
             Color.YELLOW: "yellow",
-            Color.COLORLESS: "grey",
+            Color.COLORLESS: "violet",
         }
 
     @staticmethod
@@ -253,27 +254,21 @@ class UNOGame:
                 draw_count = 0
                 while True:
                     layout = Layout()
+                    cards_to_show = current_player.cards.copy()
+                    cards_to_show.append("pass" if draw_count else "draw")
                     rich_cards = [
                         Panel(
                             Text(
-                                card.value.value,
-                                style=f"white on {self.color_mappings[card.color]}",
-                                justify="center"
+                                card.value.value if not isinstance(card, str) else card,
+                                style=f"white on {self.color_mappings[card.color] if not isinstance(card, str) else 'pink'}",
+                                justify="center",
                             ),
                             subtitle=f"{i+1}",
                             # height=4
                         )
-                        for i, card in enumerate(current_player.cards)
+                        for i, card in enumerate(cards_to_show)
                     ]
-                    rich_cards.append(
-                        Panel(
-                            Text(
-                                "pass" if draw_count else "draw", style="white on grey", justify="center"
-                            ),
-                            subtitle=str(len(current_player.cards) + 1),
-                            # height=4
-                        )
-                    )
+
                     nlayouts = int(len(rich_cards) / 8)
                     if len(rich_cards) % 8 != 0:
                         nlayouts += 1
@@ -283,9 +278,14 @@ class UNOGame:
                             *(rc for rc in rich_cards[i * 8 : (i + 1) * 8])
                         )
                     print(layout)
-                    available_cards = "/".join((str(i) for i in current_player.cards))
-                    available_cards += "/draw" if draw_count < 1 else "/pass"
-                    card_to_play = input(f"Select a card ({available_cards}): ").strip()
+
+                    ans = Prompt.ask(
+                        "Choose the card to play",
+                        choices=list(map(str, range(1, len(rich_cards) + 1))),
+                    )
+                    ans = int(ans) - 1
+
+                    card_to_play = cards_to_show[ans]
                     if card_to_play == "pass":
                         if draw_count > 0:
                             break
@@ -301,10 +301,7 @@ class UNOGame:
                         draw_count += 1
                         self.draw_card(current_player)
                         continue
-                    if card_to_play not in available_cards.split("/"):
-                        print("Can't play this card")
-                        continue
-                    card_to_play = Card.from_string(card_to_play)
+
                     if self.is_card_playable(card_to_play):
                         self.play_card(current_player.name, card_to_play)
                         break
