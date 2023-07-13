@@ -1,13 +1,16 @@
+import logging
+import random
 from datetime import date
 from pathlib import Path
-from cycle import cycle
-import random
-import logging
-from structures import Card, CardValue, Color, Player
 
-from rich.align import Align
-from rich.panel import Panel
 from rich import print
+from rich.align import Align
+from rich.layout import Layout
+from rich.text import Text
+from rich.panel import Panel
+
+from cycle import cycle
+from structures import Card, CardValue, Color, Player
 
 
 def get_log_file_location():
@@ -55,6 +58,13 @@ class UNOGame:
 
         self.draw_pile = deck[len(players) * 7 :]
         self.discard_pile = []
+        self.color_mappings = {
+            Color.RED: "red",
+            Color.GREEN: "green",
+            Color.BLUE: "blue",
+            Color.YELLOW: "yellow",
+            Color.COLORLESS: "grey",
+        }
 
     @staticmethod
     def build_deck() -> list[Card]:
@@ -216,14 +226,7 @@ class UNOGame:
         if not last_card:
             last_card = Card(Color.COLORLESS, "no card yet")
 
-        color_mappings = {
-            Color.RED: "red",
-            Color.GREEN: "green",
-            Color.BLUE: "blue",
-            Color.YELLOW: "yellow",
-            Color.COLORLESS: "grey",
-        }
-        color = color_mappings[last_card.color]
+        color = self.color_mappings[last_card.color]
         value = last_card.value
         if value != "no card yet":
             value = value.value
@@ -246,8 +249,40 @@ class UNOGame:
                     f"computer deck: {tuple(str(i) for i in current_player.cards)}"
                 )
             else:
+                # todo display piles in the layout too
                 draw_count = 0
                 while True:
+                    layout = Layout()
+                    rich_cards = [
+                        Panel(
+                            Text(
+                                card.value.value,
+                                style=f"white on {self.color_mappings[card.color]}",
+                                justify="center"
+                            ),
+                            subtitle=f"{i+1}",
+                            # height=4
+                        )
+                        for i, card in enumerate(current_player.cards)
+                    ]
+                    rich_cards.append(
+                        Panel(
+                            Text(
+                                "pass" if draw_count else "draw", style="white on grey", justify="center"
+                            ),
+                            subtitle=str(len(current_player.cards) + 1),
+                            # height=4
+                        )
+                    )
+                    nlayouts = int(len(rich_cards) / 8)
+                    if len(rich_cards) % 8 != 0:
+                        nlayouts += 1
+                    for i in range(nlayouts):
+                        layout.split_column(Layout(name=str(i + 1)))
+                        layout[f"{i+1}"].split_row(
+                            *(rc for rc in rich_cards[i * 8 : (i + 1) * 8])
+                        )
+                    print(layout)
                     available_cards = "/".join((str(i) for i in current_player.cards))
                     available_cards += "/draw" if draw_count < 1 else "/pass"
                     card_to_play = input(f"Select a card ({available_cards}): ").strip()
@@ -277,9 +312,9 @@ class UNOGame:
 
             self.apply_actions()
             if len(current_player.cards) == 1:
-                print(f"{current_player.name}: UNO")
+                print(f"[cyan bold]{current_player.name}: UNO[/]")
             elif len(current_player.cards) == 0:
-                print(f"{current_player.name}: UNO-finish")
+                print(f"[cyan bold]{current_player.name}: UNO-finish[/]")
                 print(current_player.name, "wins the game!")
                 break
 
