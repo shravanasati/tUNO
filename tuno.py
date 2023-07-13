@@ -6,9 +6,9 @@ from pathlib import Path
 from rich import print
 from rich.align import Align
 from rich.layout import Layout
-from rich.text import Text
 from rich.panel import Panel
 from rich.prompt import Prompt
+from rich.text import Text
 
 from cycle import cycle
 from structures import Card, CardValue, Color, Player
@@ -236,7 +236,7 @@ class UNOGame:
         formatted_text = f"[bold {color}]{value}[/]"
         p = Panel(formatted_text, title="discard pile")
         return p
-    
+
     def alert(self, text: str):
         renderable = Align(f"[cyan bold]{text}[/]", align="center")
         self.layout["alerts"].update(renderable)
@@ -249,17 +249,19 @@ class UNOGame:
 
         self.layout = Layout()
         self.layout.split_column(
+            Layout(name="empty"),
             Layout(name="pile"),
             Layout(name="alerts"),
             Layout(name="cards"),
         )
-        self.layout["pile"].ratio = 2
+        self.layout["empty"].ratio = 1
+        self.layout["pile"].ratio = 1
         self.layout["alerts"].ratio = 1
         self.layout["cards"].ratio = 1
 
         alerted_once = False
         while True:
-
+            self.layout["empty"].update("\n\n")
             self.layout["pile"].update(Align(self.get_piles_panel(), "center"))
             if not alerted_once:
                 self.alert("Alerts will show up here.")
@@ -272,7 +274,6 @@ class UNOGame:
                     f"computer deck: {tuple(str(i) for i in current_player.cards)}"
                 )
             else:
-                # todo improve cards layout
                 draw_count = 0
                 while True:
                     cards_to_show = current_player.cards.copy()
@@ -293,13 +294,16 @@ class UNOGame:
                     nlayouts = int(len(rich_cards) / 8)
                     if len(rich_cards) % 8 != 0:
                         nlayouts += 1
-                    # self.layout["cards"].ratio = nlayouts
-                    self.layout["cards"].split_row(*rich_cards)
-                    # for i in range(nlayouts):
-                    #     self.layout["cards"].split_column(Layout(name=str(i + 1)))
-                    #     self.layout["cards"][f"{i+1}"].split_row(
-                    #         *(rc for rc in rich_cards[i * 8 : (i + 1) * 8])
-                    #     )
+                    self.layout["cards"].ratio = nlayouts
+
+                    self.layout["cards"].split_column(
+                        *[Layout(name=f"row{i}") for i in range(nlayouts)]
+                    )
+                    for i in range(nlayouts):
+                        self.layout["cards"][f"row{i}"].split_row(
+                            *(rich_cards[i * 8 : (i + 1) * 8])
+                        )
+
                     print(self.layout)
 
                     ans = Prompt.ask(
@@ -317,7 +321,9 @@ class UNOGame:
                             continue
                     elif card_to_play == "draw":
                         if draw_count > 0:
-                            self.alert("Can't draw twice in the same chance. Either pass or play a valid card.")
+                            self.alert(
+                                "Can't draw twice in the same chance. Either pass or play a valid card."
+                            )
                             continue
                         draw_count += 1
                         self.draw_card(current_player)
@@ -333,7 +339,9 @@ class UNOGame:
             if len(current_player.cards) == 1:
                 self.alert(f"{current_player.name}: UNO")
             elif len(current_player.cards) == 0:
-                self.alert(f"{current_player.name}: UNO-finish \n{current_player.name} wins the game!")
+                self.alert(
+                    f"{current_player.name}: UNO-finish \n{current_player.name} wins the game!"
+                )
                 break
 
 
