@@ -200,6 +200,8 @@ class UNOGame:
         Takes the last card and applies relevant actions, if any.
         """
         last_card = self.get_last_card()
+        if not last_card:  # in case it's none
+            return
         if not last_card.is_action_card():
             return
 
@@ -222,7 +224,7 @@ class UNOGame:
             case _:
                 raise GameplayError("unable to match an action card")
 
-    def display_piles(self):
+    def get_piles_panel(self):
         last_card = self.get_last_card()
         if not last_card:
             last_card = Card(Color.COLORLESS, "no card yet")
@@ -232,17 +234,34 @@ class UNOGame:
         if value != "no card yet":
             value = value.value
         formatted_text = f"[bold {color}]{value}[/]"
-        p = Panel(formatted_text, title="Discard Pile")
-        print(Align(p))
+        p = Panel(formatted_text, title="discard pile")
+        return p
+    
+    def alert(self, text: str):
+        renderable = Align(f"[cyan bold]{text}[/]", align="center")
+        self.layout["alerts"].update(renderable)
 
     def play(self):
         """
         Main game loop.
         """
         self.player_cycle = cycle([Player(k, v) for k, v in self.players.items()])
-        running = True
-        while running:
-            self.display_piles()
+        while True:
+            self.layout = Layout()
+            self.layout.split_column(
+                Layout(name="pile"),
+                Layout(name="alerts"),
+                Layout(name="cards"),
+                # Layout(name="lower"),
+            )
+            self.layout["pile"].ratio = 2
+            self.layout["alerts"].ratio = 1
+            self.layout["cards"].ratio = 1
+            # layout["lower"].ratio = 1
+
+            self.layout["pile"].update(Align(self.get_piles_panel(), "center"))
+            self.alert("Alerts will show up here.")
+
             current_player: Player = self.player_cycle.next()
             if current_player.name == "computer":
                 self.computer_move(current_player)
@@ -253,7 +272,6 @@ class UNOGame:
                 # todo display piles in the layout too
                 draw_count = 0
                 while True:
-                    layout = Layout()
                     cards_to_show = current_player.cards.copy()
                     cards_to_show.append("pass" if draw_count else "draw")
                     rich_cards = [
@@ -272,12 +290,14 @@ class UNOGame:
                     nlayouts = int(len(rich_cards) / 8)
                     if len(rich_cards) % 8 != 0:
                         nlayouts += 1
-                    for i in range(nlayouts):
-                        layout.split_column(Layout(name=str(i + 1)))
-                        layout[f"{i+1}"].split_row(
-                            *(rc for rc in rich_cards[i * 8 : (i + 1) * 8])
-                        )
-                    print(layout)
+                    # self.layout["cards"].ratio = nlayouts
+                    self.layout["cards"].split_row(*rich_cards)
+                    # for i in range(nlayouts):
+                    #     self.layout["cards"].split_column(Layout(name=str(i + 1)))
+                    #     self.layout["cards"][f"{i+1}"].split_row(
+                    #         *(rc for rc in rich_cards[i * 8 : (i + 1) * 8])
+                    #     )
+                    print(self.layout)
 
                     ans = Prompt.ask(
                         "Choose the card to play",
@@ -290,13 +310,11 @@ class UNOGame:
                         if draw_count > 0:
                             break
                         else:
-                            print("cant pass without drawing atleast once")
+                            self.alert("Can't pass without drawing atleast once!")
                             continue
                     elif card_to_play == "draw":
                         if draw_count > 0:
-                            print(
-                                "Cannot draw again in the same chance. Either pass or play a valid card."
-                            )
+                            self.alert("Can't draw twice in the same chance. Either pass or play a valid card.")
                             continue
                         draw_count += 1
                         self.draw_card(current_player)
@@ -305,14 +323,13 @@ class UNOGame:
                     if self.is_card_playable(card_to_play):
                         self.play_card(current_player.name, card_to_play)
                         break
-                    print("Can't play this card")
+                    self.alert("Can't play this card (against the rules)!")
 
             self.apply_actions()
             if len(current_player.cards) == 1:
-                print(f"[cyan bold]{current_player.name}: UNO[/]")
+                self.alert(f"{current_player.name}: UNO")
             elif len(current_player.cards) == 0:
-                print(f"[cyan bold]{current_player.name}: UNO-finish[/]")
-                print(current_player.name, "wins the game!")
+                self.alert(f"{current_player.name}: UNO-finish \n{current_player.name} wins the game!")
                 break
 
 
