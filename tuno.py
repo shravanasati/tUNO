@@ -246,21 +246,24 @@ class UNOGame:
         Main game loop.
         """
         self.player_cycle = cycle([Player(k, v) for k, v in self.players.items()])
+
+        self.layout = Layout()
+        self.layout.split_column(
+            Layout(name="pile"),
+            Layout(name="alerts"),
+            Layout(name="cards"),
+        )
+        self.layout["pile"].ratio = 2
+        self.layout["alerts"].ratio = 1
+        self.layout["cards"].ratio = 1
+
+        alerted_once = False
         while True:
-            self.layout = Layout()
-            self.layout.split_column(
-                Layout(name="pile"),
-                Layout(name="alerts"),
-                Layout(name="cards"),
-                # Layout(name="lower"),
-            )
-            self.layout["pile"].ratio = 2
-            self.layout["alerts"].ratio = 1
-            self.layout["cards"].ratio = 1
-            # layout["lower"].ratio = 1
 
             self.layout["pile"].update(Align(self.get_piles_panel(), "center"))
-            self.alert("Alerts will show up here.")
+            if not alerted_once:
+                self.alert("Alerts will show up here.")
+                alerted_once = True
 
             current_player: Player = self.player_cycle.next()
             if current_player.name == "computer":
@@ -269,7 +272,7 @@ class UNOGame:
                     f"computer deck: {tuple(str(i) for i in current_player.cards)}"
                 )
             else:
-                # todo display piles in the layout too
+                # todo improve cards layout
                 draw_count = 0
                 while True:
                     cards_to_show = current_player.cards.copy()
@@ -326,6 +329,7 @@ class UNOGame:
                     self.alert("Can't play this card (against the rules)!")
 
             self.apply_actions()
+
             if len(current_player.cards) == 1:
                 self.alert(f"{current_player.name}: UNO")
             elif len(current_player.cards) == 0:
