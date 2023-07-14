@@ -167,9 +167,10 @@ class UNOGame:
             return self.play_card("computer", random.choice(deck))
 
         # if the last card is either wild card, play randomly
-        if last_card.value in (CardValue.WILD, CardValue.WILD_DRAW_FOUR):
-            logging.debug("playing a random card because last card is wild")
-            return self.play_card("computer", random.choice(deck))
+        # ! commented out because wild cards can have colors too
+        # if last_card.value in (CardValue.WILD, CardValue.WILD_DRAW_FOUR):
+        #     logging.debug("playing a random card because last card is wild")
+        #     return self.play_card("computer", random.choice(deck))
 
         # get card by color or value
         for card in deck:
@@ -185,7 +186,7 @@ class UNOGame:
                 action_needed = self.play_card("computer", card)
                 return action_needed
 
-        # last resort, draw a card from draw pile
+        # last resort, draw a card from the draw pile
         drawn_card = self.draw_card(comp_player)
         logger.debug("drawing a card")
         if self.is_card_playable(drawn_card):
@@ -241,6 +242,9 @@ class UNOGame:
                 raise GameplayError("unable to match an action card")
 
     def get_piles_panel(self):
+        """
+        Return a rich Panel of discard pile.
+        """
         last_card = self.get_last_card()
         if not last_card:
             last_card = Card(Color.COLORLESS, "no card yet")
@@ -254,6 +258,9 @@ class UNOGame:
         return p
 
     def alert(self, text: str):
+        """
+        Updates the renderable in the alerts layout.
+        """
         renderable = Align(f"[cyan bold]{text}[/]", align="center")
         self.layout["alerts"].update(renderable)
 
@@ -359,6 +366,8 @@ class UNOGame:
                 self.alert(
                     f"{current_player.name}: UNO-finish \n{current_player.name} wins the game!"
                 )
+                # todo better layout printing cuz cards remain after finishing
+                print(self.layout)
                 running = False
 
 
