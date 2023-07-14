@@ -205,15 +205,30 @@ class UNOGame:
         if not last_card.is_action_card():
             return
 
+        # todo computer move should set acceptable color for wild cards automatically
         next_player: Player = self.player_cycle.next(False)
         match last_card.value:
+            case CardValue.WILD:
+                new_color = Prompt.ask(
+                    "Choose the color to set for the wild card", choices=list("RGBY")
+                )
+                new_color = Color(new_color)
+                self.discard_pile[-1] = Card(new_color, last_card.value)
+                self.alert(f"Color acceptable on wild card: {self.color_mappings[new_color]}")
             case CardValue.DRAW_TWO:
                 [self.draw_card(next_player) for _ in range(2)]
+                self.alert(f"2 cards added on {next_player.name}'s deck")
             case CardValue.WILD_DRAW_FOUR:
                 [self.draw_card(next_player) for _ in range(4)]
+                new_color = Prompt.ask(
+                    "Choose the color to set for the wild card", choices=list("RGBY")
+                )
+                self.discard_pile[-1] = Card(Color(new_color), last_card.value)
+                self.alert(f"4 cards added on {next_player.name}'s deck \nColor acceptable on wild card: {self.color_mappings[new_color]}")
             case CardValue.SKIP:
                 # to skip the players, run next once
-                self.player_cycle.next()
+                skipped_player: Player = self.player_cycle.next()
+                self.alert(f"{skipped_player.name}'s chance is skipped.")
             case CardValue.REVERSE:
                 # create a new player cycle with reversed order
                 further_players = [
@@ -221,6 +236,7 @@ class UNOGame:
                 ]
                 further_players = further_players[::-1]
                 self.player_cycle = cycle(further_players)
+                self.alert("Player cycle reversed.")
             case _:
                 raise GameplayError("unable to match an action card")
 
@@ -233,8 +249,8 @@ class UNOGame:
         value = last_card.value
         if value != "no card yet":
             value = value.value
-        formatted_text = f"[bold {color}]{value}[/]"
-        p = Panel(formatted_text, title="discard pile")
+        rich_text = Text(value, style=f"bold white on {color}", justify="center")
+        p = Panel(rich_text, title="discard pile")
         return p
 
     def alert(self, text: str):
@@ -260,7 +276,8 @@ class UNOGame:
         self.layout["cards"].ratio = 1
 
         alerted_once = False
-        while True:
+        running = True
+        while running:
             self.layout["empty"].update("\n\n")
             self.layout["pile"].update(Align(self.get_piles_panel(), "center"))
             if not alerted_once:
@@ -342,7 +359,7 @@ class UNOGame:
                 self.alert(
                     f"{current_player.name}: UNO-finish \n{current_player.name} wins the game!"
                 )
-                break
+                running = False
 
 
 if __name__ == "__main__":
