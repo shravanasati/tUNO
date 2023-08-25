@@ -2,6 +2,7 @@ import logging
 import random
 from datetime import date
 from pathlib import Path
+from statistics import mode
 
 from rich import print
 from rich.align import Align
@@ -196,6 +197,17 @@ class UNOGame:
 
         return False
 
+    def get_wild_color(self):
+        """
+        A helper function which returns the color which appears the most in the computer's deck.
+        """
+        deck = self.players.get("computer")
+        colors = [card.color.value for card in deck if card.color != Color.COLORLESS]
+        if len(colors) == 0:
+            return random.choice(list("RGBY"))
+
+        return mode(colors)
+
     def apply_actions(self):
         """
         Takes the last card and applies relevant actions, if any.
@@ -210,9 +222,13 @@ class UNOGame:
         next_player: Player = self.player_cycle.next(False)
         match last_card.value:
             case CardValue.WILD:
-                new_color = Prompt.ask(
-                    "Choose the color to set for the wild card", choices=list("RGBY")
-                )
+                if next_player.name != "computer":
+                    # meaning current player is computer
+                    new_color = self.get_wild_color()
+                else:
+                    new_color = Prompt.ask(
+                        "Choose the color to set for the wild card", choices=list("RGBY")
+                    )
                 new_color = Color(new_color)
                 self.discard_pile[-1] = Card(new_color, last_card.value)
                 self.alert(f"Color acceptable on wild card: {self.color_mappings[new_color]}")
@@ -221,9 +237,13 @@ class UNOGame:
                 self.alert(f"2 cards added on {next_player.name}'s deck")
             case CardValue.WILD_DRAW_FOUR:
                 [self.draw_card(next_player) for _ in range(4)]
-                new_color = Prompt.ask(
-                    "Choose the color to set for the wild card", choices=list("RGBY")
-                )
+                if next_player.name != "computer":
+                    # meaning current player is computer
+                    new_color = self.get_wild_color()
+                else:
+                    new_color = Prompt.ask(
+                        "Choose the color to set for the wild card", choices=list("RGBY")
+                    )
                 self.discard_pile[-1] = Card(Color(new_color), last_card.value)
                 self.alert(f"4 cards added on {next_player.name}'s deck \nColor acceptable on wild card: {self.color_mappings[new_color]}")
             case CardValue.SKIP:
