@@ -131,6 +131,9 @@ class UNOGame:
         if not last_card:
             return True
 
+        # todo culprit of overriding wild cards lie here and in computer_move
+        # drawn card by computer is automatically played w/o calling apply_actions
+        # and these conditions allow any card to be played over drawn wild cards
         conditions = (
             card.color == last_card.color,
             card.value == last_card.value,
@@ -204,8 +207,12 @@ class UNOGame:
         deck = self.players["computer"]
         colors = [card.color.value for card in deck if card.color != Color.COLORLESS]
         if len(colors) == 0:
-            return random.choice(colors)
-        return mode(colors)
+            c = random.choice(colors)
+            logging.debug(f"chose color '{c}' for wild card in random")
+            return c
+        c = mode(colors)
+        logging.debug(f"chose color '{c}' for wild card as its mode")
+        return c
 
     def apply_actions(self):
         """
