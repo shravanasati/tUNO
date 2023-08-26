@@ -27,11 +27,14 @@ def get_log_file_location():
     return filepath
 
 
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
-logger.addHandler(logging.FileHandler(get_log_file_location(), encoding="utf-8"))
-stdout_handler = logger.handlers[0]
-logger.removeHandler(stdout_handler)
+logging.basicConfig(
+    filename=get_log_file_location(),
+    filemode="a",
+    level=logging.DEBUG,
+    encoding="utf-8",
+    format="%(asctime)s %(name)s %(levelname)s: %(message)s",
+    datefmt="%H:%M:%S",
+)
 
 
 class GameplayError(Exception):
@@ -164,7 +167,7 @@ class UNOGame:
         deck = self.players["computer"]
         # if the first card is being played
         if not last_card:
-            logger.debug("playing a random card because first")
+            logging.debug("playing a random card because first")
             return self.play_card("computer", random.choice(deck))
 
         # if the last card is either wild card, play randomly
@@ -176,22 +179,22 @@ class UNOGame:
         # get card by color or value
         for card in deck:
             if card.color == last_card.color or card.value == last_card.value:
-                logger.debug(f"playing {str(card)=} as per last card")
+                logging.debug(f"playing {str(card)=} as per last card")
                 action_needed = self.play_card("computer", card)
                 return action_needed
 
         # if no card by color or value, use a wild card if present
         for card in deck:
             if card.color == Color.COLORLESS:
-                logger.debug("playing a wild card cuz no options")
+                logging.debug("playing a wild card cuz no options")
                 action_needed = self.play_card("computer", card)
                 return action_needed
 
         # last resort, draw a card from the draw pile
         drawn_card = self.draw_card(comp_player)
-        logger.debug("drawing a card")
+        logging.debug("drawing a card")
         if self.is_card_playable(drawn_card):
-            logger.debug(f"playing the {str(drawn_card)=}")
+            logging.debug(f"playing the {str(drawn_card)=}")
             action_needed = self.play_card("computer", drawn_card)
             return action_needed
 
@@ -312,7 +315,7 @@ class UNOGame:
             current_player: Player = self.player_cycle.next()
             if current_player.name == "computer":
                 self.computer_move(current_player)
-                logger.debug(
+                logging.debug(
                     f"computer deck: {tuple(str(i) for i in current_player.cards)}"
                 )
             else:
