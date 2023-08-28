@@ -131,14 +131,12 @@ class UNOGame:
         if not last_card:
             return True
 
-        # todo culprit of overriding wild cards lie here and in computer_move
-        # drawn card by computer is automatically played w/o calling apply_actions
-        # and these conditions allow any card to be played over drawn wild cards
         conditions = (
             card.color == last_card.color,
             card.value == last_card.value,
-            card.color == Color.COLORLESS,  # wild cards
-            last_card.color == Color.COLORLESS,
+            card.value in (CardValue.WILD, CardValue.WILD_DRAW_FOUR)
+            # card.color == Color.COLORLESS,  # wild cards
+            # last_card.color == Color.COLORLESS,
         )
 
         return any(conditions)
@@ -160,6 +158,7 @@ class UNOGame:
             last_card = self.get_last_card()
             raise GameplayError(f"unplayable {card=}. {last_card=}")
 
+        self.apply_actions()
         return card.is_action_card()
 
     def computer_move(self, comp_player: Player):
@@ -281,10 +280,11 @@ class UNOGame:
         value = last_card.value
         if value != "no card yet":
             value = value.value
-        rich_text = Text(value, style=f"bold white on {color}", justify="center")
+        rich_text = Text(value, style=f"bold black on {color}", justify="center")
         p = Panel(rich_text, title="discard pile")
         return p
 
+    # todo alerts should have a queue
     def alert(self, text: str):
         """
         Updates the renderable in the alerts layout.
@@ -334,7 +334,7 @@ class UNOGame:
                         Panel(
                             Text(
                                 card.value.value if not isinstance(card, str) else card,
-                                style=f"white on {self.color_mappings[card.color] if not isinstance(card, str) else 'pink'}",
+                                style=f"black on {self.color_mappings[card.color] if not isinstance(card, str) else 'pink'}",
                                 justify="center",
                             ),
                             subtitle=f"{i+1}",
@@ -386,7 +386,7 @@ class UNOGame:
                         break
                     self.alert("Can't play this card (against the rules)!")
 
-            self.apply_actions()
+            # self.apply_actions()
 
             if len(current_player.cards) == 1:
                 self.alert(f"{current_player.name}: UNO")

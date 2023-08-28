@@ -61,6 +61,7 @@ class Card:
 
     def is_action_card(self):
         return self.value in (
+            CardValue.WILD,
             CardValue.WILD_DRAW_FOUR,
             CardValue.DRAW_TWO,
             CardValue.SKIP,
