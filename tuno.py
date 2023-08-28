@@ -1,5 +1,6 @@
 import logging
 import random
+import time
 from datetime import date
 from pathlib import Path
 from statistics import mode
@@ -27,14 +28,21 @@ def get_log_file_location():
     return filepath
 
 
-logging.basicConfig(
-    filename=get_log_file_location(),
-    filemode="a",
-    level=logging.DEBUG,
-    encoding="utf-8",
-    format="%(asctime)s %(name)s %(levelname)s: %(message)s",
-    datefmt="%H:%M:%S",
-)
+def purge_logs(limit_days: int = 30):
+    logs_dir = Path.home() / ".tuno" / "logs"
+    if not logs_dir.exists():
+        return
+
+    days_to_seconds = limit_days * 24 * 60 * 60
+    for file in logs_dir.iterdir():
+        conditions = (
+            file.is_file(),
+            file.name.endswith(".log"),
+            (time.time() - file.stat().st_mtime) > days_to_seconds,
+            # file older than limit days
+        )
+        if all(conditions):
+            file.unlink()
 
 
 class GameplayError(Exception):
@@ -224,14 +232,15 @@ class UNOGame:
             return
 
         next_player: Player = self.player_cycle.next(False)
-        last_player: Player = self.player_cycle[self.player_cycle.last_index]
+        last_player: Player = self.player_cycle[self.player_cycle._last_index]
         match last_card.value:
             case CardValue.WILD:
                 if last_player.name == "computer":
                     new_color = self.computer_get_wild_color()
                 else:
                     new_color = Prompt.ask(
-                        "Choose the color to set for the wild card", choices=list("RGBY")
+                        "Choose the color to set for the wild card",
+                        choices=list("RGBY"),
                     )
                 new_color = Color(new_color)
                 self.discard_pile[-1] = Card(new_color, last_card.value)
@@ -247,7 +256,8 @@ class UNOGame:
                     new_color = self.computer_get_wild_color()
                 else:
                     new_color = Prompt.ask(
-                        "Choose the color to set for the wild card", choices=list("RGBY")
+                        "Choose the color to set for the wild card",
+                        choices=list("RGBY"),
                     )
                 self.discard_pile[-1] = Card(Color(new_color), last_card.value)
                 self.alert(
@@ -260,7 +270,7 @@ class UNOGame:
             case CardValue.REVERSE:
                 # create a new player cycle with reversed order
                 further_players = [
-                    self.player_cycle.next() for _ in range(self.player_cycle.length)
+                    self.player_cycle.next() for _ in range(self.player_cycle._length)
                 ]
                 further_players = further_players[::-1]
                 self.player_cycle = cycle(further_players)
@@ -400,5 +410,14 @@ class UNOGame:
 
 
 if __name__ == "__main__":
+    logging.basicConfig(
+        filename=get_log_file_location(),
+        filemode="a",
+        level=logging.DEBUG,
+        encoding="utf-8",
+        format="%(asctime)s %(name)s %(levelname)s: %(message)s",
+        datefmt="%H:%M:%S",
+    )
+    purge_logs()
     game = UNOGame("player", "computer")
     game.play()
