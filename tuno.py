@@ -308,7 +308,7 @@ class UNOGame:
         value = last_card.value
         if value != "no card yet":
             value = value.value
-        rich_text = Text(value, style=f"bold black on {color}", justify="center")
+        rich_text = Text(value, style=f"black on {color}", justify="center")
         p = Panel(rich_text, title="discard pile")
         return p
 
@@ -323,7 +323,7 @@ class UNOGame:
                 "\n".join(
                     [
                         f"[cyan bold]{i + 1}. {a.text} [i](at {a.created_time.strftime('%H:%M:%S')})[/][/]"
-                        for i, a in enumerate(self.__alert_queue[-4:])
+                        for i, a in enumerate(self.__alert_queue[-5:])
                     ]
                 ),
                 align="center",
@@ -364,14 +364,11 @@ class UNOGame:
         self.layout["alerts"].ratio = 1
         self.layout["cards"].ratio = 1
 
-        alerted_once = False
+        self.alert("Alerts will show up here.")
         running = True
         while running:
             self.layout["empty"].update("\n\n")
             self.layout["pile"].update(Align(self.get_piles_panel(), "center"))
-            if not alerted_once:
-                self.alert("Alerts will show up here.")
-                alerted_once = True
 
             current_player: Player = self.player_cycle.next()
             if current_player.name == "computer":
