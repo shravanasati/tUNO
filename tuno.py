@@ -1,9 +1,11 @@
+from dataclasses import dataclass
 import logging
 import random
 import time
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
 from statistics import mode
+from threading import Lock, Thread
 
 from rich import print
 from rich.align import Align
@@ -14,6 +16,12 @@ from rich.text import Text
 
 from cycle import cycle
 from structures import Card, CardValue, Color, Player
+
+
+@dataclass(frozen=True)
+class AlertItem:
+    text: str
+    created_time: datetime
 
 
 def get_log_file_location():
@@ -57,6 +65,9 @@ class UNOGame:
     """
 
     def __init__(self, *players: str) -> None:
+        """
+        Initializes decks for all the given players and starts an alert queue purger thread.
+        """
         if len(players) not in range(2, 11):
             raise GameplayError("too less or too many players")
         if len(players) != len(set(players)):
@@ -78,6 +89,13 @@ class UNOGame:
             Color.YELLOW: "yellow",
             Color.COLORLESS: "violet",
         }
+        self._game_exit = (
+            False  # flag to indicate the alert_purger_thread to stop working
+        )
+        self.__alert_queue: list[AlertItem] = []
+        self.__alert_lock = Lock()
+        self._alert_purger_thread = Thread(target=self.purge_old_alerts)
+        self._alert_purger_thread.start()
 
     @staticmethod
     def build_deck() -> list[Card]:
@@ -294,13 +312,39 @@ class UNOGame:
         p = Panel(rich_text, title="discard pile")
         return p
 
-    # todo alerts should have a queue
     def alert(self, text: str):
         """
         Updates the renderable in the alerts layout.
         """
-        renderable = Align(f"[cyan bold]{text}[/]", align="center")
+        now = datetime.now()
+        self.__alert_queue.append(AlertItem(text, now))
+        with self.__alert_lock:
+            renderable = Align(
+                "\n".join(
+                    [
+                        f"[cyan bold]{i + 1}. {a.text} [i](at {a.created_time.strftime('%H:%M:%S')})[/][/]"
+                        for i, a in enumerate(self.__alert_queue[-4:])
+                    ]
+                ),
+                align="center",
+            )
+        # renderable = Align(f"[cyan bold]{text} [i](at {now})[/][/]", align="center")
         self.layout["alerts"].update(renderable)
+
+    def purge_old_alerts(self):
+        while True:
+            if self._game_exit:
+                break
+
+            now = datetime.now()
+            with self.__alert_lock:
+                old_items = (
+                    a for a in self.__alert_queue if (now - a.created_time).seconds > 30
+                )
+                for old_alert in old_items:
+                    self.__alert_queue.remove(old_alert)
+
+            time.sleep(1)
 
     def play(self):
         """
@@ -407,17 +451,37 @@ class UNOGame:
                 # todo better layout printing cuz cards remain after finishing
                 print(self.layout)
                 running = False
+                game._game_exit = True
 
 
 if __name__ == "__main__":
-    logging.basicConfig(
-        filename=get_log_file_location(),
-        filemode="a",
-        level=logging.DEBUG,
-        encoding="utf-8",
-        format="%(asctime)s %(name)s %(levelname)s: %(message)s",
-        datefmt="%H:%M:%S",
-    )
-    purge_logs()
-    game = UNOGame("player", "computer")
-    game.play()
+    try:
+        logging.basicConfig(
+            filename=get_log_file_location(),
+            filemode="a",
+            level=logging.DEBUG,
+            encoding="utf-8",
+            format="%(asctime)s %(name)s %(levelname)s: %(message)s",
+            datefmt="%H:%M:%S",
+        )
+        purge_logs()
+        game = UNOGame("player", "computer")
+        game.play()
+
+    except KeyboardInterrupt:
+        print("[green]byeee[/]")
+
+    except GameplayError as ge:
+        logging.exception(ge)
+        print(
+            f"[red]the game did something it shouldn't, a log file has been generated at `{get_log_file_location()}`.[/]"
+        )
+
+    except Exception as e:
+        logging.exception(e)
+        print(
+            f"[red]an unknown error occured, a log file with the exception traceback has been generated at `{get_log_file_location()}`.[/]"
+        )
+
+    finally:
+        game._game_exit = True
