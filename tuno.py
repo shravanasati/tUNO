@@ -346,6 +346,37 @@ class UNOGame:
 
             time.sleep(1)
 
+    def update_layout(self, cards_to_show: list[Card | str]) -> None:
+        """
+        Updates self.layout's empty, pile with the given deck of cards.
+        """
+        self.layout["pile"].update(Align(self.get_piles_panel(), "center"))
+        rich_cards = [
+            Panel(
+                Text(
+                    card.value.value if not isinstance(card, str) else card,
+                    style=f"black on {self.color_mappings[card.color] if not isinstance(card, str) else 'pink'}",
+                    justify="center",
+                ),
+                subtitle=f"{i+1}",
+                # height=4
+            )
+            for i, card in enumerate(cards_to_show)
+        ]
+
+        nlayouts = int(len(rich_cards) / 8)
+        if len(rich_cards) % 8 != 0:
+            nlayouts += 1
+        self.layout["cards"].ratio = nlayouts
+
+        self.layout["cards"].split_column(
+            *[Layout(name=f"row{i}") for i in range(nlayouts)]
+        )
+        for i in range(nlayouts):
+            self.layout["cards"][f"row{i}"].split_row(
+                *(rich_cards[i * 8 : (i + 1) * 8])
+            )
+
     def play(self):
         """
         Main game loop.
@@ -364,12 +395,11 @@ class UNOGame:
         self.layout["alerts"].ratio = 1
         self.layout["cards"].ratio = 1
 
+        self.layout["empty"].update("\n\n")
         self.alert("Alerts will show up here.")
+
         running = True
         while running:
-            self.layout["empty"].update("\n\n")
-            self.layout["pile"].update(Align(self.get_piles_panel(), "center"))
-
             current_player: Player = self.player_cycle.next()
             if current_player.name == "computer":
                 self.computer_move(current_player)
@@ -381,37 +411,12 @@ class UNOGame:
                 while True:
                     cards_to_show = current_player.cards.copy()
                     cards_to_show.append("pass" if draw_count else "draw")
-                    rich_cards = [
-                        Panel(
-                            Text(
-                                card.value.value if not isinstance(card, str) else card,
-                                style=f"black on {self.color_mappings[card.color] if not isinstance(card, str) else 'pink'}",
-                                justify="center",
-                            ),
-                            subtitle=f"{i+1}",
-                            # height=4
-                        )
-                        for i, card in enumerate(cards_to_show)
-                    ]
-
-                    nlayouts = int(len(rich_cards) / 8)
-                    if len(rich_cards) % 8 != 0:
-                        nlayouts += 1
-                    self.layout["cards"].ratio = nlayouts
-
-                    self.layout["cards"].split_column(
-                        *[Layout(name=f"row{i}") for i in range(nlayouts)]
-                    )
-                    for i in range(nlayouts):
-                        self.layout["cards"][f"row{i}"].split_row(
-                            *(rich_cards[i * 8 : (i + 1) * 8])
-                        )
-
+                    self.update_layout(cards_to_show)
                     print(self.layout)
 
                     ans = Prompt.ask(
                         "Choose the card to play",
-                        choices=list(map(str, range(1, len(rich_cards) + 1))),
+                        choices=list(map(str, range(1, len(cards_to_show) + 1))),
                     )
                     ans = int(ans) - 1
 
@@ -443,9 +448,9 @@ class UNOGame:
                 self.alert(f"{current_player.name}: UNO")
             elif len(current_player.cards) == 0:
                 self.alert(
-                    f"{current_player.name}: UNO-finish \n{current_player.name} wins the game!"
+                    f"{current_player.name}: UNO-finish"
                 )
-                # todo better layout printing cuz cards remain after finishing
+                self.update_layout(list())
                 print(self.layout)
                 running = False
                 game._game_exit = True
