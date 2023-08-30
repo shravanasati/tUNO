@@ -226,6 +226,7 @@ class UNOGame:
             action_needed = self.play_card("computer", drawn_card)
             return action_needed
 
+        # pass
         return False
 
     def computer_get_wild_color(self):
@@ -395,7 +396,7 @@ class UNOGame:
         self.layout["alerts"].ratio = 1
         self.layout["cards"].ratio = 1
 
-        self.layout["empty"].update("\n\n")
+        self.layout["empty"].update("\n")
         self.alert("Alerts will show up here.")
 
         running = True
@@ -447,10 +448,16 @@ class UNOGame:
             if len(current_player.cards) == 1:
                 self.alert(f"{current_player.name}: UNO")
             elif len(current_player.cards) == 0:
-                self.alert(
-                    f"{current_player.name}: UNO-finish"
-                )
+                self.alert(f"{current_player.name}: UNO-finish")
                 self.update_layout(list())
+
+                self.layout["cards"].ratio = 1
+                self.layout["cards"].update(
+                    Align(
+                        Panel(f"[green bold]{current_player.name} wins the game![/]"),
+                        align="center",
+                    )
+                )
                 print(self.layout)
                 running = False
                 game._game_exit = True
