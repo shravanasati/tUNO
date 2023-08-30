@@ -317,8 +317,8 @@ class UNOGame:
         Updates the renderable in the alerts layout.
         """
         now = datetime.now()
-        self.__alert_queue.append(AlertItem(text, now))
         with self.__alert_lock:
+            self.__alert_queue.append(AlertItem(text, now))
             renderable = Align(
                 "\n".join(
                     [
