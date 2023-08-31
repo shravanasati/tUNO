@@ -288,9 +288,10 @@ class UNOGame:
                 self.alert(f"{skipped_player.name}'s chance is skipped.")
             case CardValue.REVERSE:
                 # create a new player cycle with reversed order
-                further_players = [
-                    self.player_cycle.next() for _ in range(self.player_cycle._length)
-                ]
+                further_players = [last_player]
+                further_players.extend([
+                    self.player_cycle.next() for _ in range(self.player_cycle._length - 1)
+                ])
                 further_players = further_players[::-1]
                 self.player_cycle = cycle(further_players)
                 self.alert("Player cycle reversed.")
@@ -402,6 +403,7 @@ class UNOGame:
         running = True
         while running:
             current_player: Player = self.player_cycle.next()
+            logging.debug(f"current cycle: {[i.name for i in self.player_cycle.all()]}")
             if current_player.name == "computer":
                 self.computer_move(current_player)
                 logging.debug(
@@ -474,7 +476,7 @@ if __name__ == "__main__":
             datefmt="%H:%M:%S",
         )
         purge_logs()
-        game = UNOGame("player", "computer")
+        game = UNOGame("abc", "xyz", "computer")
         game.play()
 
     except KeyboardInterrupt:

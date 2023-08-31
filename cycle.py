@@ -30,6 +30,12 @@ class cycle:
         item %= self._length
         return self._iterable[item]
 
+    def all(self) -> list[T]:
+        """
+        Returns the current cycle.
+        """
+        return [self[self._last_index + i] for i in range(self._length)]
+
 
 if __name__ == "__main__":
     players = cycle(list("pqr"))
