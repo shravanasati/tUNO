@@ -76,6 +76,10 @@ class UNOGame:
         deck = self.build_deck()
         random.shuffle(deck)
 
+        # shuffle players once before the game
+        players = list(players)
+        random.shuffle(players)
+
         self.players: dict[str, list[Card]] = {}
         for i, player in enumerate(players):
             self.players[player] = deck[i * 7 : (i + 1) * 7]
@@ -289,9 +293,12 @@ class UNOGame:
             case CardValue.REVERSE:
                 # create a new player cycle with reversed order
                 further_players = [last_player]
-                further_players.extend([
-                    self.player_cycle.next() for _ in range(self.player_cycle._length - 1)
-                ])
+                further_players.extend(
+                    [
+                        self.player_cycle.next()
+                        for _ in range(self.player_cycle._length - 1)
+                    ]
+                )
                 further_players = further_players[::-1]
                 self.player_cycle = cycle(further_players)
                 self.alert("Player cycle reversed.")
@@ -399,6 +406,7 @@ class UNOGame:
 
         self.layout["empty"].update("\n")
         self.alert("Alerts will show up here.")
+        self.alert(f"Current player order: {'->'.join((i.name for i in self.player_cycle.all()))}")
 
         running = True
         while running:
@@ -476,7 +484,7 @@ if __name__ == "__main__":
             datefmt="%H:%M:%S",
         )
         purge_logs()
-        game = UNOGame("abc", "xyz", "computer")
+        game = UNOGame("player", "computer")
         game.play()
 
     except KeyboardInterrupt:

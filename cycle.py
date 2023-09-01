@@ -1,9 +1,9 @@
-from typing import TypeVar
+from typing import TypeVar, Generic
 
 T = TypeVar("T")
 
 
-class cycle:
+class cycle(Generic[T]):
     def __init__(self, iterable: list[T]) -> None:
         self._iterable = iterable
         self._length = len(self._iterable)
