@@ -20,11 +20,18 @@ from structures import Card, CardValue, Color, Player
 
 @dataclass(frozen=True)
 class AlertItem:
+    """
+    Represents an element in the alert queue.
+    """
+
     text: str
     created_time: datetime
 
 
 def get_log_file_location():
+    """
+    Returns ~/.tuno/logs/{today}.log by creating the parent directories if they don't exist.
+    """
     tuno_dir = Path.home() / ".tuno"
     if not tuno_dir.exists():
         tuno_dir.mkdir()
@@ -37,6 +44,9 @@ def get_log_file_location():
 
 
 def purge_logs(limit_days: int = 30):
+    """
+    Deletes log files older than `limit` days.
+    """
     logs_dir = Path.home() / ".tuno" / "logs"
     if not logs_dir.exists():
         return
@@ -130,7 +140,7 @@ class UNOGame:
 
     def draw_card(self, player: Player) -> Card:
         """
-        Draws a card from the draw pile.
+        Draws a card from the draw pile, and rebuilds the draw pile if it's empty.
         """
         try:
             card = self.draw_pile[0]
@@ -175,9 +185,9 @@ class UNOGame:
         """
         Plays the card if it's playable.
         Raises `GameplayError` otherwise.
+        Also calls the self.apply_actions method.
 
-        Returns a boolean whether the card is an action card, so as to implement actions
-        associated with it in the game loop.
+        Returns a boolean whether the card is an action card.
         """
         if self.is_card_playable(card):
             player_deck = self.players[player_name]
@@ -234,6 +244,9 @@ class UNOGame:
         return False
 
     def computer_get_wild_color(self):
+        """
+        Chooses a color from ( R, G, B, Y ) to place on the wild card computer is using.
+        """
         deck = self.players["computer"]
         colors = [card.color.value for card in deck if card.color != Color.COLORLESS]
         if len(colors) == 0:
@@ -258,6 +271,7 @@ class UNOGame:
         last_player: Player = self.player_cycle[self.player_cycle._last_index]
         match last_card.value:
             case CardValue.WILD:
+                # choose the color for the wild card
                 if last_player.name == "computer":
                     new_color = self.computer_get_wild_color()
                 else:
@@ -271,9 +285,11 @@ class UNOGame:
                     f"Color acceptable on wild card: {self.color_mappings[new_color]}"
                 )
             case CardValue.DRAW_TWO:
+                # add 2 cards on the next player
                 [self.draw_card(next_player) for _ in range(2)]
                 self.alert(f"2 cards added on {next_player.name}'s deck")
             case CardValue.WILD_DRAW_FOUR:
+                # add 4 cards on the next player and choose the color for the wild card
                 [self.draw_card(next_player) for _ in range(4)]
                 if last_player.name == "computer":
                     new_color = self.computer_get_wild_color()
@@ -307,7 +323,7 @@ class UNOGame:
 
     def get_piles_panel(self):
         """
-        Return a rich Panel of discard pile.
+        Return a rich.Panel of the discard pile.
         """
         last_card = self.get_last_card()
         if not last_card:
@@ -323,7 +339,8 @@ class UNOGame:
 
     def alert(self, text: str):
         """
-        Updates the renderable in the alerts layout.
+        Updates the renderable in the alerts layout with the given text in a certain style.
+        Also adds the given alert to self.__alert_queue.
         """
         now = datetime.now()
         with self.__alert_lock:
@@ -341,6 +358,10 @@ class UNOGame:
         self.layout["alerts"].update(renderable)
 
     def purge_old_alerts(self):
+        """
+        Must be ran as an independent thread. Removes alerts from self.__alert_queue which are older
+        than 30 seconds. It stops working when it sees self._game_exit flag set to True.
+        """
         while True:
             if self._game_exit:
                 break
@@ -357,7 +378,7 @@ class UNOGame:
 
     def update_layout(self, cards_to_show: list[Card | str]) -> None:
         """
-        Updates self.layout's empty, pile with the given deck of cards.
+        Updates self.layout's discard pile, and cards with the given deck of cards.
         """
         self.layout["pile"].update(Align(self.get_piles_panel(), "center"))
         rich_cards = [
@@ -406,7 +427,9 @@ class UNOGame:
 
         self.layout["empty"].update("\n")
         self.alert("Alerts will show up here.")
-        self.alert(f"Current player order: {'->'.join((i.name for i in self.player_cycle.all()))}")
+        self.alert(
+            f"Current player order: {'->'.join((i.name for i in self.player_cycle.all()))}"
+        )
 
         running = True
         while running:
@@ -503,4 +526,5 @@ if __name__ == "__main__":
         )
 
     finally:
+        # regardless of whatever happens, stop the alert purger thread
         game._game_exit = True
