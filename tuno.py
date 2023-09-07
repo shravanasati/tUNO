@@ -284,10 +284,12 @@ class UNOGame:
                 self.alert(
                     f"Color acceptable on wild card: {self.color_mappings[new_color]}"
                 )
+
             case CardValue.DRAW_TWO:
                 # add 2 cards on the next player
                 [self.draw_card(next_player) for _ in range(2)]
                 self.alert(f"2 cards added on {next_player.name}'s deck")
+
             case CardValue.WILD_DRAW_FOUR:
                 # add 4 cards on the next player and choose the color for the wild card
                 [self.draw_card(next_player) for _ in range(4)]
@@ -302,22 +304,31 @@ class UNOGame:
                 self.alert(
                     f"4 cards added on {next_player.name}'s deck \nColor acceptable on wild card: {self.color_mappings[new_color]}"
                 )
+
             case CardValue.SKIP:
                 # to skip the players, run next once
                 skipped_player: Player = self.player_cycle.next()
                 self.alert(f"{skipped_player.name}'s chance is skipped.")
+
             case CardValue.REVERSE:
                 # create a new player cycle with reversed order
-                further_players = [last_player]
-                further_players.extend(
-                    [
-                        self.player_cycle.next()
-                        for _ in range(self.player_cycle._length - 1)
-                    ]
-                )
-                further_players = further_players[::-1]
-                self.player_cycle = cycle(further_players)
+                if len(self.players) > 2:
+                    further_players = [last_player]
+                    further_players.extend(
+                        [
+                            self.player_cycle.next()
+                            for _ in range(self.player_cycle._length - 1)
+                        ]
+                    )
+                    further_players = further_players[::-1]
+                    self.player_cycle = cycle(further_players)
+                else:
+                    further_players = [last_player, next_player]
+                    # no need to reverse
+                    self.player_cycle = cycle(further_players)
+
                 self.alert("Player cycle reversed.")
+
             case _:
                 raise GameplayError("unable to match an action card")
 
@@ -376,6 +387,7 @@ class UNOGame:
 
             time.sleep(1)
 
+    # replace layout[empty] with showing the current player
     def update_layout(self, cards_to_show: list[Card | str]) -> None:
         """
         Updates self.layout's discard pile, and cards with the given deck of cards.
@@ -507,7 +519,7 @@ if __name__ == "__main__":
             datefmt="%H:%M:%S",
         )
         purge_logs()
-        game = UNOGame("player", "computer")
+        game = UNOGame("player", "computer", "player2")
         game.play()
 
     except KeyboardInterrupt:
