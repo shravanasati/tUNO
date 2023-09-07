@@ -9,6 +9,7 @@ from threading import Lock, Thread
 
 from rich import print
 from rich.align import Align
+from rich.console import Group
 from rich.layout import Layout
 from rich.panel import Panel
 from rich.prompt import Prompt
@@ -387,11 +388,24 @@ class UNOGame:
 
             time.sleep(1)
 
-    # replace layout[empty] with showing the current player
-    def update_layout(self, cards_to_show: list[Card | str]) -> None:
+    def update_layout(
+        self, cards_to_show: list[Card | str], current_player: str
+    ) -> None:
         """
         Updates self.layout's discard pile, and cards with the given deck of cards.
         """
+        current_player_text = Text(
+            text=current_player, style="black on white", justify="center"
+        )
+        self.layout["current_player"].update(
+            Group(
+                "\n",
+                Align(
+                    Panel(current_player_text, title="current player"),
+                    "center",
+                ),
+            )
+        )
         self.layout["pile"].update(Align(self.get_piles_panel(), "center"))
         rich_cards = [
             Panel(
@@ -427,18 +441,18 @@ class UNOGame:
 
         self.layout = Layout()
         self.layout.split_column(
-            Layout(name="empty"),
+            Layout(name="current_player"),
             Layout(name="pile"),
             Layout(name="alerts"),
             Layout(name="cards"),
         )
-        self.layout["empty"].ratio = 1
+        self.layout["current_player"].ratio = 1
         self.layout["pile"].ratio = 1
         self.layout["alerts"].ratio = 1
         self.layout["cards"].ratio = 1
 
-        self.layout["empty"].update("\n")
         self.alert("Alerts will show up here.")
+        # todo current player order is wrong
         self.alert(
             f"Current player order: {'->'.join((i.name for i in self.player_cycle.all()))}"
         )
@@ -457,7 +471,7 @@ class UNOGame:
                 while True:
                     cards_to_show = current_player.cards.copy()
                     cards_to_show.append("pass" if draw_count else "draw")
-                    self.update_layout(cards_to_show)
+                    self.update_layout(cards_to_show, current_player.name)
                     print(self.layout)
 
                     ans = Prompt.ask(
