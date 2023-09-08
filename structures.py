@@ -1,7 +1,8 @@
 from dataclasses import dataclass
-from enum import Enum, StrEnum
+from enum import Enum, EnumCheck, StrEnum, verify
 
 
+@verify(EnumCheck.UNIQUE)
 class Color(StrEnum):
     """
     Represents card colors. COLORLESS is reserved only for wild draw four and wild card.
@@ -14,6 +15,7 @@ class Color(StrEnum):
     COLORLESS = ""
 
 
+@verify(EnumCheck.UNIQUE)
 class CardValue(Enum):
     ZERO = "0"
     ONE = "1"

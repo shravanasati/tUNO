@@ -88,14 +88,14 @@ class UNOGame:
         random.shuffle(deck)
 
         # shuffle players once before the game
-        players = list(players)
-        random.shuffle(players)
+        players_list = list(players)
+        random.shuffle(players_list)
 
         self.players: dict[str, list[Card]] = {}
-        for i, player in enumerate(players):
+        for i, player in enumerate(players_list):
             self.players[player] = deck[i * 7 : (i + 1) * 7]
 
-        self.draw_pile = deck[len(players) * 7 :]
+        self.draw_pile = deck[len(players_list) * 7 :]
         self.discard_pile = []
         self.color_mappings = {
             Color.RED: "red",
@@ -143,17 +143,18 @@ class UNOGame:
         """
         Draws a card from the draw pile, and rebuilds the draw pile if it's empty.
         """
-        try:
-            card = self.draw_pile[0]
-            self.draw_pile.remove(card)
-            player.cards.append(card)
-            return card
-        except IndexError:
-            # refill the draw pile with cards on discard pile
-            new_cards = self.discard_pile[:-1]
-            random.shuffle(new_cards)
-            self.discard_pile = self.discard_pile[:-1]
-            self.draw_pile = new_cards
+        while True:
+            try:
+                card = self.draw_pile[0]
+                self.draw_pile.remove(card)
+                player.cards.append(card)
+                return card
+            except IndexError:
+                # refill the draw pile with cards on discard pile
+                new_cards = self.discard_pile[:-1]
+                random.shuffle(new_cards)
+                self.discard_pile = self.discard_pile[:-1]
+                self.draw_pile = new_cards
 
     def get_last_card(self) -> Card | None:
         """
@@ -301,6 +302,7 @@ class UNOGame:
                         "Choose the color to set for the wild card",
                         choices=list("RGBY"),
                     )
+                new_color = Color(new_color)
                 self.discard_pile[-1] = Card(Color(new_color), last_card.value)
                 self.alert(
                     f"4 cards added on {next_player.name}'s deck \nColor acceptable on wild card: {self.color_mappings[new_color]}"
@@ -518,10 +520,11 @@ class UNOGame:
                 )
                 print(self.layout)
                 running = False
-                game._game_exit = True
+                self._game_exit = True
 
 
 if __name__ == "__main__":
+    game: UNOGame | None = None
     try:
         logging.basicConfig(
             filename=get_log_file_location(),
@@ -552,4 +555,5 @@ if __name__ == "__main__":
 
     finally:
         # regardless of whatever happens, stop the alert purger thread
-        game._game_exit = True
+        if game:
+            game._game_exit = True
