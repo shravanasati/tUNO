@@ -12,10 +12,10 @@ from rich.align import Align
 from rich.console import Group
 from rich.layout import Layout
 from rich.panel import Panel
-from rich.prompt import Prompt
 from rich.text import Text
 
 from cycle import cycle
+from prompt import prompt
 from structures import Card, CardValue, Color, Player
 
 
@@ -252,7 +252,7 @@ class UNOGame:
         deck = self.players["computer"]
         colors = [card.color.value for card in deck if card.color != Color.COLORLESS]
         if len(colors) == 0:
-            c = random.choice(colors)
+            c = random.choice(list("RGBY"))
             logging.debug(f"chose color '{c}' for wild card in random")
             return c
         c = mode(colors)
@@ -277,9 +277,10 @@ class UNOGame:
                 if last_player.name == "computer":
                     new_color = self.computer_get_wild_color()
                 else:
-                    new_color = Prompt.ask(
+                    new_color = prompt(
                         "Choose the color to set for the wild card",
                         choices=list("RGBY"),
+                        transform_functions=(lambda x: x.upper(),)
                     )
                 new_color = Color(new_color)
                 self.discard_pile[-1] = Card(new_color, last_card.value)
@@ -298,9 +299,10 @@ class UNOGame:
                 if last_player.name == "computer":
                     new_color = self.computer_get_wild_color()
                 else:
-                    new_color = Prompt.ask(
+                    new_color = prompt(
                         "Choose the color to set for the wild card",
                         choices=list("RGBY"),
+                        transform_functions=(lambda x: x.upper(),)
                     )
                 new_color = Color(new_color)
                 self.discard_pile[-1] = Card(Color(new_color), last_card.value)
@@ -475,7 +477,7 @@ class UNOGame:
                     self.update_layout(cards_to_show, current_player.name)
                     print(self.layout)
 
-                    ans = Prompt.ask(
+                    ans = prompt(
                         "Choose the card to play",
                         choices=list(map(str, range(1, len(cards_to_show) + 1))),
                     )

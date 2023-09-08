@@ -1,5 +1,5 @@
 from rich import print
-from typing import Callable
+from typing import Callable, Iterable
 
 
 ValidatorFunc = Callable[[str], bool]
@@ -8,10 +8,10 @@ TransformFunc = Callable[[str], str]
 
 def prompt(
     text: str,
-    *,
-    validate_func: ValidatorFunc | None = None,
-    transform_func: TransformFunc | None = None,
-    choices: list[str] | None = None,
+    *,  # all parameters below must be keyword only
+    validate_functions: Iterable[ValidatorFunc] | None = None,
+    transform_functions: Iterable[TransformFunc] | None = None,
+    choices: Iterable[str] | None = None,
     show_choices: bool = True,
     wrong_input_text: str = "Wrong input!",
 ):
@@ -22,13 +22,16 @@ def prompt(
     """
     prompt_text = f"{text}"
     validators: list[ValidatorFunc] = []
-    transformers: list[TransformFunc] = [lambda x: x.strip()]
+    transformers: list[TransformFunc] = []
+    transformers.append(
+        lambda x: x.strip()
+    )  # adding strip function above inside the list declaration messes with type hinting
 
-    if validate_func:
-        validators.append(validate_func)
+    if validate_functions:
+        validators.extend(validate_functions)
 
-    if transform_func:
-        transformers.append(transform_func)
+    if transform_functions:
+        transformers.extend(transform_functions)
 
     if choices:
         validators.append(lambda x: x in choices)
@@ -56,5 +59,9 @@ def prompt(
 
 
 if __name__ == "__main__":
-    ans = prompt("Choose the card to play", choices=list("RGBY"), transform_func=lambda x: x.upper())
+    ans = prompt(
+        "Choose the card to play",
+        choices=list("RGBY"),
+        transform_functions=(lambda x: x.upper(),),
+    )
     print(ans)
