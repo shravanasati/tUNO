@@ -13,12 +13,16 @@ def prompt(
     transform_functions: Iterable[TransformFunc] | None = None,
     choices: Iterable[str] | None = None,
     show_choices: bool = True,
+    default: str | None = None,
+    show_default: bool = True,
     wrong_input_text: str = "Wrong input!",
 ):
     """
     Custom prompt function inspired from rich, with transformers and validators.
 
-    The transform_func is applied on the input string before validator_func is checked.
+    The transform functions are applied on the input string before validator functions are checked.
+
+    The default argument would also be validated by the given validations.
     """
     prompt_text = f"{text}"
     validators: list[ValidatorFunc] = []
@@ -39,6 +43,10 @@ def prompt(
             choices_text = f" [purple][{'/'.join(choices)}][/]"
             prompt_text += choices_text
 
+    if default and show_default:
+        default_text = f" [cyan]({default})[/]"
+        prompt_text += default_text
+
     prompt_text += ": "
 
     input_validated = False
@@ -48,6 +56,8 @@ def prompt(
         ans = input()
         for transformer in transformers:
             ans = transformer(ans)
+        if ans == "" and default:
+            ans = default
         for validator in validators:
             if not validator(ans):
                 print(f"[red]{wrong_input_text}[/]")

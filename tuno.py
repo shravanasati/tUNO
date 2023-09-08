@@ -280,7 +280,7 @@ class UNOGame:
                     new_color = prompt(
                         "Choose the color to set for the wild card",
                         choices=list("RGBY"),
-                        transform_functions=(lambda x: x.upper(),)
+                        transform_functions=(lambda x: x.upper(),),
                     )
                 new_color = Color(new_color)
                 self.discard_pile[-1] = Card(new_color, last_card.value)
@@ -302,7 +302,7 @@ class UNOGame:
                     new_color = prompt(
                         "Choose the color to set for the wild card",
                         choices=list("RGBY"),
-                        transform_functions=(lambda x: x.upper(),)
+                        transform_functions=(lambda x: x.upper(),),
                     )
                 new_color = Color(new_color)
                 self.discard_pile[-1] = Card(Color(new_color), last_card.value)
