@@ -452,7 +452,6 @@ class UNOGame:
         self.layout["cards"].ratio = 1
 
         self.alert("Alerts will show up here.")
-        # todo current player order is wrong
         self.alert(
             f"Current player order: {'->'.join((i.name for i in self.player_cycle.all()))}"
         )
@@ -508,7 +507,7 @@ class UNOGame:
                 self.alert(f"{current_player.name}: UNO")
             elif len(current_player.cards) == 0:
                 self.alert(f"{current_player.name}: UNO-finish")
-                self.update_layout(list())
+                self.update_layout(list(), "")
 
                 self.layout["cards"].ratio = 1
                 self.layout["cards"].update(

@@ -34,12 +34,14 @@ class cycle(Generic[T]):
         """
         Returns the current cycle.
         """
-        return [self[self._last_index + i] for i in range(self._length)]
+        return [self[self._last_index + 1 + i] for i in range(self._length)]
 
 
 if __name__ == "__main__":
     players = cycle(list("pqr"))
+    print(players.all())
     print(players[8])
     print(players.next())
     print(players.next(False))
     print(players.next())
+    print(players.all())
