@@ -1,5 +1,64 @@
-from rich import print
+import time
 from typing import Callable, Iterable
+from rich import print
+
+import platform
+
+WINDOWS = platform.system() == "Windows"
+
+if WINDOWS:
+    import msvcrt
+    import sys
+else:
+    import signal
+
+
+class TimeoutExpired(Exception):
+    """
+    TimeoutExpired is raised when user doesn't input anything until given number of seconds.
+    """
+
+    pass
+
+
+def __input_with_timeout_windows(prompt: str, timeout: int) -> str | None:
+    sys.stdout.write(prompt)
+    sys.stdout.flush()
+    endtime = time.monotonic() + timeout
+
+    result = []
+    while time.monotonic() < endtime:
+        if msvcrt.kbhit():
+            result.append(msvcrt.getwche())
+            if result[-1] == "\r":
+                return "".join(result[:-1])
+
+        time.sleep(0.04)  # just to yield to other processes/threads
+
+    raise TimeoutExpired("Input timeout!")
+
+
+def __timeout_handler(signal_num, stack_frame):
+    raise TimeoutExpired(
+        f"Input timeout! Signal number: {signal_num}, stack frame: {stack_frame}"
+    )
+
+
+def __input_with_timeout_unix(prompt: str, timeout: int) -> str | None:
+    signal.signal(signal.SIGALRM, __timeout_handler)
+    signal.alarm(timeout)
+
+    ans = input(prompt)
+    signal.alarm(0)
+
+    return ans
+
+
+def __input_with_timeout(prompt: str, timeout: int) -> str | None:
+    if WINDOWS:
+        return __input_with_timeout_windows(prompt, timeout)
+    else:
+        return __input_with_timeout_unix(prompt, timeout)
 
 
 ValidatorFunc = Callable[[str], bool]
@@ -16,14 +75,22 @@ def prompt(
     default: str | None = None,
     show_default: bool = True,
     wrong_input_text: str = "Wrong input!",
-):
+    timeout: int | None = None,
+) -> str:
     """
     Custom prompt function inspired from rich, with transformers and validators.
 
     The transform functions are applied on the input string before validator functions are checked.
 
     The default argument would also be validated by the given validations.
+
+    Returns default if the timeout argument is given and input duration exceeds the timeout.
     """
+    if not default:
+        default = ""
+    if timeout and not default:
+        raise ValueError("prompt: a default argument must be provided if timeout is being used")
+
     prompt_text = f"{text}"
     validators: list[ValidatorFunc] = []
     transformers: list[TransformFunc] = []
@@ -51,20 +118,38 @@ def prompt(
 
     input_validated = False
     ans: str = ""
+    init = time.time()
     while not input_validated:
         print(prompt_text, end="")
-        ans = input()
+        if timeout:
+            if (time.time() - init) > timeout:
+                # wrong input resets the internal timer of __input_with_timeout
+                # therefore check for time here too
+                # this is different that input with timeout cuz that can kill the input, this if condition can't
+                print()
+                return default
+            try:
+                a = __input_with_timeout("", timeout)
+                ans = a if a else ""
+            except TimeoutExpired:
+                print()
+                return default
+        else:
+            ans = input()
         for transformer in transformers:
             ans = transformer(ans)
-        if ans == "" and default:
+        if ans == "":
             ans = default
         for validator in validators:
             if not validator(ans):
-                print(f"[red]{wrong_input_text}[/]")
+                nlc = "\n"
+                print(f"{nlc if timeout else ''}[red]{wrong_input_text}[/]")
                 break
         else:
             input_validated = True
 
+    if timeout:
+        print()
     return ans
 
 
@@ -73,5 +158,10 @@ if __name__ == "__main__":
         "Choose the card to play",
         choices=list("RGBY"),
         transform_functions=(lambda x: x.upper(),),
+        default="R",
+        timeout=5,
     )
-    print(ans)
+    if ans:
+        print(ans)
+    else:
+        print("timeout!")

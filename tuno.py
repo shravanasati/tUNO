@@ -472,7 +472,8 @@ class UNOGame:
             else:
                 draw_count = 0
                 while True:
-                    cards_to_show = current_player.cards.copy()
+                    cards_to_show: list[Card | str] = []
+                    cards_to_show.extend(current_player.cards.copy())
                     cards_to_show.append("pass" if draw_count else "draw")
                     self.update_layout(cards_to_show, current_player.name)
                     print(self.layout)
@@ -500,10 +501,11 @@ class UNOGame:
                         self.draw_card(current_player)
                         continue
 
-                    if self.is_card_playable(card_to_play):
-                        self.play_card(current_player.name, card_to_play)
-                        break
-                    self.alert("Can't play this card (against the rules)!")
+                    if isinstance(card_to_play, Card):
+                        if self.is_card_playable(card_to_play):
+                            self.play_card(current_player.name, card_to_play)
+                            break
+                        self.alert(f"Can't play the card {str(card_to_play)} (against the rules)!")
 
             # self.apply_actions()
 
