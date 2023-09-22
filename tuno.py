@@ -398,14 +398,17 @@ class UNOGame:
         """
         Updates self.layout's discard pile, and cards with the given deck of cards.
         """
-        current_player_text = Text(
-            text=current_player, style="black on white", justify="center"
-        )
-        self.layout["current_player"].update(
+        player_order_text = "[black on white]" + " -> ".join(
+            (
+                p.name if p.name != current_player else f"[u black on red]{p.name}[/]"
+                for p in self.player_cycle._iterable
+            )
+        ) + "[/]"
+        self.layout["player_order"].update(
             Group(
                 "\n",
                 Align(
-                    Panel(current_player_text, title="current player"),
+                    Panel(player_order_text, title="player order"),
                     "center",
                 ),
             )
@@ -444,13 +447,14 @@ class UNOGame:
         self.player_cycle = cycle([Player(k, v) for k, v in self.players.items()])
 
         self.layout = Layout()
+        # todo show current order in the layout
         self.layout.split_column(
-            Layout(name="current_player"),
+            Layout(name="player_order"),
             Layout(name="pile"),
             Layout(name="alerts"),
             Layout(name="cards"),
         )
-        self.layout["current_player"].ratio = 1
+        self.layout["player_order"].ratio = 1
         self.layout["pile"].ratio = 1
         self.layout["alerts"].ratio = 1
         self.layout["cards"].ratio = 1
@@ -482,6 +486,7 @@ class UNOGame:
                         "Choose the card to play",
                         choices=list(map(str, range(1, len(cards_to_show) + 1))),
                     )
+                    # todo set timeout above and pass if timeout expired
                     ans = int(ans) - 1
 
                     card_to_play = cards_to_show[ans]
@@ -505,7 +510,9 @@ class UNOGame:
                         if self.is_card_playable(card_to_play):
                             self.play_card(current_player.name, card_to_play)
                             break
-                        self.alert(f"Can't play the card {str(card_to_play)} (against the rules)!")
+                        self.alert(
+                            f"Can't play the card {str(card_to_play)} (against the rules)!"
+                        )
 
             # self.apply_actions()
 
