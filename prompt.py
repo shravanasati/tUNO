@@ -74,6 +74,8 @@ def prompt(
     show_choices: bool = True,
     default: str | None = None,
     show_default: bool = True,
+    validate_default: bool = True,
+    transform_default: bool = True,
     wrong_input_text: str = "Wrong input!",
     timeout: int | None = None,
 ) -> str:
@@ -82,9 +84,9 @@ def prompt(
 
     The transform functions are applied on the input string before validator functions are checked.
 
-    The default argument would also be validated by the given validations.
+    The default argument would also be validated by the given validations if `validate_default` is set to True.
 
-    Returns default if the timeout argument is given and input duration exceeds the timeout.
+    Returns default if the timeout argument is given and input duration exceeds the timeout. Thus, the default argument must be provided if timeout is being used. It would raise a ValueError otherwise.
     """
     if not default:
         default = ""
@@ -120,26 +122,35 @@ def prompt(
     ans: str = ""
     init = time.time()
     while not input_validated:
-        print(prompt_text, end="")
         if timeout:
             if (time.time() - init) > timeout:
                 # wrong input resets the internal timer of __input_with_timeout
                 # therefore check for time here too
                 # this is different that input with timeout cuz that can kill the input, this if condition can't
                 print()
-                return default
-            try:
-                a = __input_with_timeout("", timeout)
-                ans = a if a else ""
-            except TimeoutExpired:
-                print()
-                return default
+                ans = default
+            else:
+                try:
+                    print(prompt_text, end="")
+                    a = __input_with_timeout("", timeout)
+                    ans = a if a else ""
+                except TimeoutExpired:
+                    print()
+                    ans = default
         else:
+            print(prompt_text, end="")
             ans = input()
+
         for transformer in transformers:
             ans = transformer(ans)
+            if transform_default:
+                default = transformer(default)
+
         if ans == "":
             ans = default
+        if not validate_default and ans == default:
+            break
+
         for validator in validators:
             if not validator(ans):
                 nlc = "\n"
@@ -158,7 +169,7 @@ if __name__ == "__main__":
         "Choose the card to play",
         choices=list("RGBY"),
         transform_functions=(lambda x: x.upper(),),
-        default="R",
+        default="Re",
         timeout=5,
     )
     if ans:

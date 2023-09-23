@@ -252,7 +252,7 @@ class UNOGame:
         deck = self.players["computer"]
         colors = [card.color.value for card in deck if card.color != Color.COLORLESS]
         if len(colors) == 0:
-            c = random.choice(list("RGBY"))
+            c = random.choice("RGBY")
             logging.debug(f"chose color '{c}' for wild card in random")
             return c
         c = mode(colors)
@@ -291,7 +291,7 @@ class UNOGame:
             case CardValue.DRAW_TWO:
                 # add 2 cards on the next player
                 [self.draw_card(next_player) for _ in range(2)]
-                self.alert(f"2 cards added on {next_player.name}'s deck")
+                self.alert(f"2 cards added on {next_player.name}'s deck by {last_player.name}")
 
             case CardValue.WILD_DRAW_FOUR:
                 # add 4 cards on the next player and choose the color for the wild card
@@ -303,17 +303,20 @@ class UNOGame:
                         "Choose the color to set for the wild card",
                         choices=list("RGBY"),
                         transform_functions=(lambda x: x.upper(),),
+                        timeout=30,
+                        default=random.choice("RGBY"),
+                        show_default=False
                     )
                 new_color = Color(new_color)
                 self.discard_pile[-1] = Card(Color(new_color), last_card.value)
                 self.alert(
-                    f"4 cards added on {next_player.name}'s deck \nColor acceptable on wild card: {self.color_mappings[new_color]}"
+                    f"4 cards added on {next_player.name}'s deck by {last_player.name}\nColor acceptable on wild card: {self.color_mappings[new_color]}"
                 )
 
             case CardValue.SKIP:
                 # to skip the players, run next once
                 skipped_player: Player = self.player_cycle.next()
-                self.alert(f"{skipped_player.name}'s chance is skipped.")
+                self.alert(f"{skipped_player.name}'s chance is skipped by {last_player.name}.")
 
             case CardValue.REVERSE:
                 # create a new player cycle with reversed order
@@ -332,7 +335,7 @@ class UNOGame:
                     # no need to reverse
                     self.player_cycle = cycle(further_players)
 
-                self.alert("Player cycle reversed.")
+                self.alert(f"Player cycle reversed by {last_player.name}.")
 
             case _:
                 raise GameplayError("unable to match an action card")
@@ -363,10 +366,10 @@ class UNOGame:
             self.__alert_queue.append(AlertItem(text, now))
             renderable = Align(
                 "\n".join(
-                    [
+                    (
                         f"[cyan bold]{i + 1}. {a.text} [i](at {a.created_time.strftime('%H:%M:%S')})[/][/]"
                         for i, a in enumerate(self.__alert_queue[-5:])
-                    ]
+                    )
                 ),
                 align="center",
             )
@@ -376,7 +379,7 @@ class UNOGame:
     def purge_old_alerts(self):
         """
         Must be ran as an independent thread. Removes alerts from self.__alert_queue which are older
-        than 30 seconds. It stops working when it sees self._game_exit flag set to True.
+        than 30 seconds. Stops working when it sees the `self._game_exit` flag set to True.
         """
         while True:
             if self._game_exit:
@@ -396,7 +399,7 @@ class UNOGame:
         self, cards_to_show: list[Card | str], current_player: str
     ) -> None:
         """
-        Updates self.layout's discard pile, and cards with the given deck of cards.
+        Updates `self.layout`'s discard pile, player order and cards with the given deck of cards.
         """
         player_order_text = "[black on white]" + " -> ".join(
             (
@@ -447,7 +450,6 @@ class UNOGame:
         self.player_cycle = cycle([Player(k, v) for k, v in self.players.items()])
 
         self.layout = Layout()
-        # todo show current order in the layout
         self.layout.split_column(
             Layout(name="player_order"),
             Layout(name="pile"),
@@ -460,9 +462,6 @@ class UNOGame:
         self.layout["cards"].ratio = 1
 
         self.alert("Alerts will show up here.")
-        self.alert(
-            f"Current player order: {'->'.join((i.name for i in self.player_cycle.all()))}"
-        )
 
         running = True
         while running:
@@ -485,11 +484,18 @@ class UNOGame:
                     ans = prompt(
                         "Choose the card to play",
                         choices=list(map(str, range(1, len(cards_to_show) + 1))),
+                        timeout=30,
+                        default="pass",
+                        show_default=False,
+                        validate_default=False
                     )
-                    # todo set timeout above and pass if timeout expired
-                    ans = int(ans) - 1
+                    if ans == "pass":
+                        self.alert(f"{current_player.name}'s chance is skipped due to input timeout.")
+                        break
 
+                    ans = int(ans) - 1
                     card_to_play = cards_to_show[ans]
+
                     if card_to_play == "pass":
                         if draw_count > 0:
                             break
@@ -513,8 +519,6 @@ class UNOGame:
                         self.alert(
                             f"Can't play the card {str(card_to_play)} (against the rules)!"
                         )
-
-            # self.apply_actions()
 
             if len(current_player.cards) == 1:
                 self.alert(f"{current_player.name}: UNO")
