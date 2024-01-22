@@ -95,8 +95,6 @@ class UNOGame:
         for i, player in enumerate(players_list):
             self.players[player] = deck[i * 7 : (i + 1) * 7]
 
-        self.player_cycle = cycle([Player(k, v) for k, v in self.players.items()])
-
         self.draw_pile = deck[len(players_list) * 7 :]
         self.discard_pile = []
         self.color_mappings = {
@@ -449,6 +447,7 @@ class UNOGame:
         """
         Main game loop.
         """
+        self.player_cycle = cycle([Player(k, v) for k, v in self.players.items()])
 
         self.layout = Layout()
         self.layout.split_column(
@@ -552,7 +551,7 @@ if __name__ == "__main__":
         )
         purge_logs()
         # game = UNOGame("player", "computer", "player2")
-        game = UNOGame("player", "computer")
+        game = UNOGame("vishal", "computer")
         game.play()
 
     except KeyboardInterrupt:
