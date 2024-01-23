@@ -155,7 +155,7 @@ class UNOGame:
                 # refill the draw pile with cards on discard pile
                 new_cards = self.discard_pile[:-1]
                 random.shuffle(new_cards)
-                self.discard_pile = self.discard_pile[:-1]
+                self.discard_pile = self.discard_pile[-1:]
                 self.draw_pile = new_cards
 
     def get_last_card(self) -> Card | None:
